@@ -64,7 +64,7 @@ int main()
 
     Sudoku sudokuWorld = Sudoku{ "6......3.......7....7463....7.8...2.4...9...1.9...7.8....9851....6.......1......9" };
 
-    bool success = SudokuSolverCallback::Run(sudokuWorld, true);
+    bool success = WFC::Run<SudokuSolverCallback>(sudokuWorld, true);
 
     bool solved = sudokuWorld.isSolved();
 

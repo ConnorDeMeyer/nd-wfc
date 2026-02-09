@@ -19,6 +19,7 @@ using VariableIDType = std::conditional_t<VariablesAmount <= std::numeric_limits
 template <typename VarT, VarT ... Values>
 class VariableIDMap {
 public:
+    using Type = VarT;
 
     template <VarT ... AdditionalValues>
     using Merge = VariableIDMap<VarT, Values..., AdditionalValues...>;

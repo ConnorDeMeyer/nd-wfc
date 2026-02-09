@@ -33,7 +33,7 @@ protected:
 
     // Helper function to solve a puzzle using WFC
     void solvePuzzle(Sudoku& sudoku) {
-        SudokuSolver::Run(sudoku, true);
+        WFC::Run<SudokuSolver>(sudoku, true);
     }
 };
 
@@ -286,7 +286,7 @@ void testPuzzleSolving(const std::string& difficulty, const std::string& filenam
         Sudoku& sudoku = puzzles[i];
         EXPECT_TRUE(sudoku.isValid()) << difficulty << " puzzle " << i << " is not valid";
 
-        SudokuSolver::Run(sudoku);
+        WFC::Run<SudokuSolver>(sudoku);
 
         EXPECT_TRUE(sudoku.isSolved()) << difficulty << " puzzle " << i << " was not solved. Puzzle string: " << sudoku.toString();
 
