@@ -8,7 +8,11 @@ namespace WFC {
 template <typename WorldT, typename WorldSizeT, typename VarT, typename ConstainerType>
 struct EmptyConstrainerFunction
 {
+    static void invoke(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) {}
     void operator()(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) const {}
+
+    using FuncPtrType = void(*)(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&);
+    operator FuncPtrType() const { return &invoke; }
 };
 
 template <typename ... ConstrainerFunctions>
@@ -111,6 +115,23 @@ public:
 
     void Only(WorldValue<typename IDMapT::Type> value, size_t cellId) {
         ApplyMask(cellId, 1 << value.InternalIndex);
+    }
+
+    /**
+        * @brief Re-enable specific values for a cell (OR bits back in)
+        * @param cellId The ID of the cell to modify
+        */
+    template <typename IDMapT::Type ... IncludedValues>
+    void Include(size_t cellId) {
+        static_assert(sizeof...(IncludedValues) > 0, "At least one included value must be provided");
+        if (m_wave.IsCollapsed(cellId)) return; // don't un-collapse decided cells
+        auto indices = IDMapT::template ValuesToIndices<IncludedValues...>();
+        m_wave.Enable(cellId, BitContainerT::GetMask(indices));
+    }
+
+    void Include(WorldValue<typename IDMapT::Type> value, size_t cellId) {
+        if (m_wave.IsCollapsed(cellId)) return;
+        m_wave.Enable(cellId, 1 << value.InternalIndex);
     }
 
 private:

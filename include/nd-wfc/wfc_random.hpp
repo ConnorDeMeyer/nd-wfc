@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 namespace WFC {
 
 /**
@@ -27,14 +29,14 @@ public:
 template <typename VarT>
 class AdvancedRandomSelector {
 private:
-    std::mt19937& m_rng;
+    mutable std::mt19937 m_rng;
 
 public:
-    explicit AdvancedRandomSelector(std::mt19937& rng) : m_rng(rng) {}
+    explicit AdvancedRandomSelector(uint32_t seed = 0x12345678) : m_rng(seed) {}
 
-    uint32_t rng(uint32_t max) const { 
-        std::uniform_int_distribution<uint32_t> dist(0, max);
-        return dist(m_rng); 
+    uint32_t rng(uint32_t max) const {
+        std::uniform_int_distribution<uint32_t> dist(0, max - 1);
+        return dist(m_rng);
     }
 };
 

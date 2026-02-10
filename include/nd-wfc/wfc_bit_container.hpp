@@ -142,28 +142,31 @@ public:
 public: // Sub byte
     struct SubTypeAccess
     {
-        constexpr SubTypeAccess(uint8_t& data, uint8_t subIndex) : Data{ data }, Shift{ StorageBits * subIndex } {};
-        
+        constexpr SubTypeAccess(uint8_t& data, uint8_t subIndex) : Data{ data }, Shift{ static_cast<uint8_t>(StorageBits * subIndex) } {};
+
         constexpr uint8_t GetValue() const { return ((Data >> Shift) & Mask); }
-        constexpr uint8_t SetValue(uint8_t val) { Clear(); return Data |= ((val & Mask) << Shift); }
-        constexpr void Clear() { Data &= ~Mask; }
+        constexpr uint8_t SetValue(uint8_t val) { Clear(); Data |= ((val & Mask) << Shift); return GetValue(); }
+        constexpr void Clear() { Data &= ~(static_cast<uint8_t>(Mask) << Shift); }
 
 
-        constexpr SubTypeAccess& operator=(uint8_t other) { return SetValue(other); }
+        constexpr SubTypeAccess& operator=(uint8_t other) { SetValue(other); return *this; }
         constexpr operator uint8_t() const { return GetValue(); }
 
-        constexpr SubTypeAccess& operator&=(uint8_t other) { return SetValue(GetValue() & other); }
-        constexpr SubTypeAccess& operator|=(uint8_t other) { return SetValue(GetValue() | other); }
-        constexpr SubTypeAccess& operator^=(uint8_t other) { return SetValue(GetValue() ^ other); }
-        constexpr SubTypeAccess& operator<<=(uint8_t other) { return SetValue(GetValue() << other); }
-        constexpr SubTypeAccess& operator>>=(uint8_t other) { return SetValue(GetValue() >> other); }
+        constexpr SubTypeAccess& operator&=(uint8_t other) { SetValue(GetValue() & other); return *this; }
+        constexpr SubTypeAccess& operator|=(uint8_t other) { SetValue(GetValue() | other); return *this; }
+        constexpr SubTypeAccess& operator^=(uint8_t other) { SetValue(GetValue() ^ other); return *this; }
+        constexpr SubTypeAccess& operator<<=(uint8_t other) { SetValue(GetValue() << other); return *this; }
+        constexpr SubTypeAccess& operator>>=(uint8_t other) { SetValue(GetValue() >> other); return *this; }
 
         uint8_t& Data;
         uint8_t Shift;
     };
 
-    constexpr const SubTypeAccess operator[](size_t index) const requires(IsSubByte) { return SubTypeAccess{data()[index / ElementsPerByte], index & ElementsPerByte }; }
-    constexpr SubTypeAccess operator[](size_t index) requires(IsSubByte) { return SubTypeAccess{data()[index / ElementsPerByte], index & ElementsPerByte }; }
+    constexpr StorageType operator[](size_t index) const requires(IsSubByte) {
+        uint8_t shift = static_cast<uint8_t>(StorageBits * (index % ElementsPerByte));
+        return (data()[index / ElementsPerByte] >> shift) & static_cast<StorageType>(Mask);
+    }
+    constexpr SubTypeAccess operator[](size_t index) requires(IsSubByte) { return SubTypeAccess{data()[index / ElementsPerByte], static_cast<uint8_t>(index % ElementsPerByte) }; }
 
 public: // default
     constexpr const StorageType& operator[](size_t index) const requires(!IsSubByte) { return data()[index]; }

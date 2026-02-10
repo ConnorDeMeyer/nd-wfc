@@ -26,6 +26,9 @@
 
 namespace WFC {
 
+struct EmptyInitialState {};
+
+
 template<typename T>
 concept WorldType = requires(T world, typename T::ValueType value) {
     { world.size() } -> std::integral;
@@ -69,7 +72,8 @@ struct SolverState {
 
 // Types-only config struct produced by Builder
 template <typename WorldT, typename VarT, typename VariableIDMapT,
-          typename ConstrainerFunctionMapT, typename CallbacksT, typename RandomSelectorT>
+          typename ConstrainerFunctionMapT, typename CallbacksT, typename RandomSelectorT,
+          typename InitialStateFunctionT = EmptyInitialState>
 struct WFCConfig {
     static_assert(WorldType<WorldT>, "WorldT must satisfy World type requirements");
 
@@ -79,6 +83,8 @@ struct WFCConfig {
     using WaveType = Wave<VariableIDMapT, WorldSize>;
     using CallbacksType = CallbacksT;
     using ConstrainerFunctionMapType = ConstrainerFunctionMapT;
+    using InitialStateFunctionType = InitialStateFunctionT;
+    static consteval bool HasInitialState() { return !std::is_same_v<InitialStateFunctionT, EmptyInitialState>; }
 };
 
 // Forward declarations for mutually recursive functions
@@ -288,6 +294,13 @@ bool Run(typename ConfigT::SolverStateType& state)
     WaveType wave{ ConfigT::WorldSize, VariableIDMapT::size(), state.m_allocator };
 
     detail::PropogateInitialValues<CallbacksT>(state, wave);
+
+    if constexpr (ConfigT::HasInitialState())
+    {
+        using ConstrainerType = Constrainer<WaveType, typename ConfigT::SolverStateType::PropagationQueueType>;
+        ConstrainerType constrainer(wave, state.m_propagationQueue);
+        typename ConfigT::InitialStateFunctionType{}(state.m_world, constrainer, state.m_randomSelector);
+    }
 
     if (RunLoop<CallbacksT, ConstrainerFunctionMapT>(state, wave)) {
         detail::PopulateWorld(state, wave);

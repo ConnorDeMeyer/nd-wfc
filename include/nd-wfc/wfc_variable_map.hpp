@@ -61,7 +61,8 @@ public:
 
     static constexpr VarT GetValue(size_t index) {
         constexpr_assert(index < size());
-        return GetAllValues()[index];
+        constexpr VarT arr[] = {Values...};
+        return arr[index];
     }
 
     static consteval size_t size() { return sizeof...(Values); }

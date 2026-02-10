@@ -13,13 +13,14 @@ namespace WFC {
 * @brief Builder class for creating WFC instances
 */
 template<
-    typename WorldT, 
-    typename VarT = typename WorldT::ValueType, 
-    typename VariableIDMapT = VariableIDMap<VarT>, 
-    typename ConstrainerFunctionMapT = ConstrainerFunctionMap<void*>, 
-    typename CallbacksT = Callbacks<WorldT>, 
+    typename WorldT,
+    typename VarT = typename WorldT::ValueType,
+    typename VariableIDMapT = VariableIDMap<VarT>,
+    typename ConstrainerFunctionMapT = ConstrainerFunctionMap<void*>,
+    typename CallbacksT = Callbacks<WorldT>,
     typename RandomSelectorT = DefaultRandomSelector<VarT>,
-    typename SelectedValueT = void>
+    typename SelectedValueT = void,
+    typename InitialStateFunctionT = EmptyInitialState>
 class Builder {
 public:
     using WorldSizeT = decltype(WorldT{}.size());
@@ -31,22 +32,22 @@ public:
 
 
     template <VarT ... Values>
-    using DefineIDs = Builder<WorldT, VarT, VariableIDMap<VarT, Values...>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>>;
+    using DefineIDs = Builder<WorldT, VarT, VariableIDMap<VarT, Values...>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>, InitialStateFunctionT>;
 
     template <size_t RangeStart, size_t RangeEnd>
-    using DefineRange = Builder<WorldT, VarT, VariableIDRange<VarT, RangeStart, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>>;
+    using DefineRange = Builder<WorldT, VarT, VariableIDRange<VarT, RangeStart, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>, InitialStateFunctionT>;
 
     template <size_t RangeEnd>
-    using DefineRange0 = Builder<WorldT, VarT, VariableIDRange<VarT, 0, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, 0, RangeEnd>>;
+    using DefineRange0 = Builder<WorldT, VarT, VariableIDRange<VarT, 0, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, 0, RangeEnd>, InitialStateFunctionT>;
 
 
     template <VarT ... Values>
-    using Variable = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>>;
+    using Variable = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>, InitialStateFunctionT>;
 
     template <size_t RangeStart, size_t RangeEnd>
-    using VariableRange = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>>;
+    using VariableRange = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>, InitialStateFunctionT>;
 
-    
+
     using EmptyConstrainerFunctionT = EmptyConstrainerFunction<WorldT, WorldSizeT, VarT, ConstrainerType>;
 
     template <typename ConstrainerFunctionT>
@@ -58,7 +59,7 @@ public:
             ConstrainerFunctionT,
             SelectedValueT,
             EmptyConstrainerFunctionT
-            >, CallbacksT, RandomSelectorT, SelectedValueT
+            >, CallbacksT, RandomSelectorT, SelectedValueT, InitialStateFunctionT
         >;
 
     template <typename ConstrainerFunctionT>
@@ -70,22 +71,25 @@ public:
             ConstrainerFunctionT,
             VariableIDMapT,
             EmptyConstrainerFunctionT
-            >, CallbacksT, RandomSelectorT
+            >, CallbacksT, RandomSelectorT, SelectedValueT, InitialStateFunctionT
         >;
 
-        
+
     template <typename NewCellCollapsedCallbackT>
-    using SetCellCollapsedCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetCellCollapsedCallbackT<NewCellCollapsedCallbackT>, RandomSelectorT>;
+    using SetCellCollapsedCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetCellCollapsedCallbackT<NewCellCollapsedCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
     template <typename NewContradictionCallbackT>
-    using SetContradictionCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetContradictionCallbackT<NewContradictionCallbackT>, RandomSelectorT>;
+    using SetContradictionCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetContradictionCallbackT<NewContradictionCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
     template <typename NewBranchCallbackT>
-    using SetBranchCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetBranchCallbackT<NewBranchCallbackT>, RandomSelectorT>;
+    using SetBranchCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetBranchCallbackT<NewBranchCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
 
 
     template <typename NewRandomSelectorT>
-    using SetRandomSelector = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, NewRandomSelectorT>;
+    using SetRandomSelector = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, NewRandomSelectorT, SelectedValueT, InitialStateFunctionT>;
 
-    using Build = WFCConfig<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT>;
+    template <typename NewInitialStateFunctionT>
+    using SetInitialState = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, SelectedValueT, NewInitialStateFunctionT>;
+
+    using Build = WFCConfig<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, InitialStateFunctionT>;
 };
 
 }
