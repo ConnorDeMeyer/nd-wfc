@@ -138,7 +138,11 @@ public:
         m_wave.Enable(cellId, 1 << value.InternalIndex);
     }
 
-private:
+    /**
+        * @brief Apply a raw bitmask to constrain a cell's possibilities (AND)
+        * @param cellId The ID of the cell to constrain
+        * @param mask Bitmask of allowed values (bits ANDed with current possibilities)
+        */
     void ApplyMask(size_t cellId, MaskType mask) {
         bool wasCollapsed = m_wave.IsCollapsed(cellId);
 

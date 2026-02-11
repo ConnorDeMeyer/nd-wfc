@@ -1,5 +1,7 @@
 #pragma once
 
+#include "wfc_adjacency_matrix.hpp"
+
 namespace WFC {
 
 #include "wfc_utils.hpp"
@@ -195,6 +197,19 @@ public:
         OptionTypes<CallbacksT, RandomSelectorT, InitialStateFunctionT,
             typename detail::TupleAppendUnique<T, UserDataT>::type>,
         SelectedValueT>;
+
+
+    // === Adjacency Matrix ===
+
+    template <typename AdjacencyMatrixT, typename AdjacencyDefT>
+    using SetAdjacencyMatrix = typename AddUserData<AdjacencyMatrixT>
+        ::template ConstrainAll<
+            AdjacencyConstrainerFn<
+                WorldT, VarT,
+                typename AddUserData<AdjacencyMatrixT>::ConstrainerType,
+                AdjacencyMatrixT, AdjacencyDefT
+            >
+        >;
 
 
     // === Build ===

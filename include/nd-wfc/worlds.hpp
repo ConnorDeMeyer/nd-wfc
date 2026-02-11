@@ -4,6 +4,8 @@
 #include <tuple>
 #include <vector>
 
+#include "wfc_adjacency_matrix.hpp"
+
 namespace WFC {
 
 /**
@@ -116,6 +118,17 @@ public:
 private:
     std::array<T, Width * Height> data_{};
 };
+
+/**
+ * @brief AdjacencyDef for the 4 cardinal directions on an Array2D: right, left, down, up
+ */
+template <typename Array2DT>
+using Array2DAdjacency = AdjacencyDef<Array2DT,
+    decltype([](const Array2DT& w, size_t id) -> size_t { auto [x,y] = w.getCoord(id); return w.getCoordOffset(x,y, 1, 0); }),  // right
+    decltype([](const Array2DT& w, size_t id) -> size_t { auto [x,y] = w.getCoord(id); return w.getCoordOffset(x,y,-1, 0); }),  // left
+    decltype([](const Array2DT& w, size_t id) -> size_t { auto [x,y] = w.getCoord(id); return w.getCoordOffset(x,y, 0, 1); }),  // down
+    decltype([](const Array2DT& w, size_t id) -> size_t { auto [x,y] = w.getCoord(id); return w.getCoordOffset(x,y, 0,-1); })   // up
+>;
 
 /**
  * @brief 3D Array World implementation

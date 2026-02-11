@@ -1,12 +1,35 @@
 #include <nd-wfc/wfc.hpp>
 #include <nd-wfc/wfc_builder.hpp>
 #include <nd-wfc/worlds.hpp>
+#include <nd-wfc/wfc_adjacency_matrix.hpp>
 #include <iostream>
+#include <string_view>
 
-constexpr size_t DungeonWidth = 16;
-constexpr size_t DungeonHeight = 16;
+// --- Pattern to learn from ---
+constexpr size_t PatternWidth = 23;
+constexpr size_t PatternHeight = 13;
 
-using World = WFC::Array2D<char32_t, DungeonWidth, DungeonHeight>;
+using PatternWorld = WFC::Array2D<char32_t, PatternWidth, PatternHeight>;
+
+// All unique tile types in the pattern
+using IDMap = WFC::VariableIDMap<char32_t,
+    U' ', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬'>;
+
+using Adj = WFC::Array2DAdjacency<PatternWorld>;
+using Matrix = WFC::AdjacencyMatrix<IDMap, Adj>;
+
+// --- Output dungeon ---
+constexpr size_t DungeonWidth = 30;
+constexpr size_t DungeonHeight = 20;
+
+using DungeonWorld = WFC::Array2D<char32_t, DungeonWidth, DungeonHeight>;
+using DungeonAdj = WFC::Array2DAdjacency<DungeonWorld>;
+using DungeonMatrix = WFC::AdjacencyMatrix<IDMap, DungeonAdj>;
+
+using DungeonBuilder = WFC::Builder<DungeonWorld>
+    ::DefineIDs<U' ', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬'>
+    ::SetAdjacencyMatrix<DungeonMatrix, DungeonAdj>
+    ::Build;
 
 void printChar32(char32_t c) {
     char buf[4];
@@ -29,55 +52,65 @@ void printChar32(char32_t c) {
     std::cout.write(buf, len);
 }
 
-void printDungeon(const World& world) {
-    for (size_t y = 0; y < DungeonHeight; ++y) {
-        for (size_t x = 0; x < DungeonWidth; ++x) {
-            char32_t tile = world.at(x, y);
-            printChar32(tile);
+template <typename WorldT>
+void printWorld(const WorldT& world) {
+    for (size_t y = 0; y < world.height(); ++y) {
+        for (size_t x = 0; x < world.width(); ++x) {
+            printChar32(world.at(x, y));
         }
         std::cout << "\n";
     }
 }
 
 int main() {
-    std::cout << "2D Dungeon WFC Demo\n";
-    std::cout << "Dungeon size: " << DungeonWidth << "x" << DungeonHeight << "\n\n";
+    std::cout << "2D Dungeon WFC Demo (Adjacency Matrix)\n\n";
 
-    // Tile connection map:
-    //   ' '  : none
-    //   ╣    : up, down, left        ╠  : up, down, right
-    //   ║    : up, down              ═  : left, right
-    //   ╗    : down, left            ╚  : up, right
-    //   ╝    : up, left              ╔  : down, right
-    //   ╩    : up, left, right       ╦  : down, left, right
-    //   ╬    : up, down, left, right
-    //
-    // Rule: adjacent tiles must agree on connections across their shared edge.
+    // --- Step 1: Load the example pattern ---
+    const std::u32string_view rows[] = {
+        U"╔══════════╦══════════╗",
+        U"║          ║          ║",
+        U"║   ╔════╗ ║   ╔════╗ ║",
+        U"║   ║    ║ ║   ║    ║ ║",
+        U"╠═══╝    ╚═╬═══╝    ╚═╣",
+        U"║          ║         ╔╝",
+        U"║   ╔══╦═══╝   ╔══╦══╣",
+        U"║   ║  ║       ║  ║  ║",
+        U"╠═══╝  ╚═══════╝  ╚══╣",
+        U"║                    ║",
+        U"║   ╔════════════╗   ║",
+        U"║   ║            ║   ║",
+        U"╚═══╩════════════╩═══╝",
+    };
 
-    using DungeonBuilder = WFC::Builder<World>
-        ::DefineIDs<U'╣',U'╬'>
-        ::Variable<U'╣'>
-        ::Constrain<decltype([](const World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
-            auto [x, y] = world.getCoord(index);
-            
-            // Down: must connect up → exclude tiles without up
-            constrainer.template Exclude<U'╬'>(world.getCoordOffset(x, y, 0, 1));
-        })>
-        ::Variable<U'╬'>
-        ::Constrain<decltype([](const World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
-            auto [x, y] = world.getCoord(index);
-            
-            // Up: must connect down → exclude tiles without down
-            constrainer.template Exclude<U'╣'>(world.getCoordOffset(x, y, 0, -1));
-        })>
-        ::Build;
+    PatternWorld pattern{};
+    for (size_t y = 0; y < PatternHeight; ++y)
+        for (size_t x = 0; x < PatternWidth; ++x)
+            pattern.setValue(y * PatternWidth + x, x < rows[y].size() ? rows[y][x] : U' ');
 
-    World world{};
-    bool success = WFC::Run<DungeonBuilder>(world, std::random_device{}());
+    std::cout << "Input pattern (" << PatternWidth << "x" << PatternHeight << "):\n";
+    printWorld(pattern);
+
+    // --- Step 2: Build adjacency matrix from the pattern ---
+    Matrix patternMatrix;
+    patternMatrix.BuildFromPattern(pattern);
+
+    // Copy rules into a DungeonMatrix (same rules, different world size)
+    DungeonMatrix dungeonMatrix;
+    for (size_t dir = 0; dir < Matrix::AdjacencyCount; ++dir)
+        for (size_t var = 0; var < IDMap::size(); ++var)
+            dungeonMatrix.SetMask(dir, var, patternMatrix.GetMask(dir, var));
+
+    // --- Step 3: Generate a new dungeon using the learned rules ---
+    std::cout << "\nGenerated dungeon (" << DungeonWidth << "x" << DungeonHeight << "):\n";
+
+    DungeonWorld dungeon{};
+    bool success = WFC::Run<DungeonBuilder>(dungeon, std::random_device{}(), dungeonMatrix);
+
     if (!success) {
         std::cout << "WFC solver failed!\n";
+        return 1;
     }
-    printDungeon(world);
 
+    printWorld(dungeon);
     return 0;
 }

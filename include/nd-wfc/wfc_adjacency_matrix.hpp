@@ -204,4 +204,38 @@ private:
     std::array<MaskT, AdjacencyCount * VariableCount> m_data{};
 };
 
+/**
+ * @brief Stateless constrainer functor that applies adjacency matrix rules.
+ *
+ * For each direction in the AdjacencyDef, looks up the neighbor cell and
+ * applies the allowed-neighbor mask from the matrix. Follows the same
+ * pattern as EmptyConstrainerFunction (static invoke + conversion operator).
+ *
+ * @tparam WorldT            The world type
+ * @tparam VarT              The variable value type
+ * @tparam ConstrainerT      The concrete Constrainer type (includes UserDataT)
+ * @tparam AdjacencyMatrixT  The AdjacencyMatrix type stored in UserData
+ * @tparam AdjacencyDefT     The AdjacencyDef describing topology directions
+ */
+template <typename WorldT, typename VarT, typename ConstrainerT,
+          typename AdjacencyMatrixT, typename AdjacencyDefT>
+struct AdjacencyConstrainerFn
+{
+    static void invoke(const WorldT& world, size_t index, WorldValue<VarT> val, ConstrainerT& constrainer) {
+        const auto& matrix = constrainer.template GetUserData<AdjacencyMatrixT>();
+        for (size_t dir = 0; dir < AdjacencyDefT::Count; ++dir) {
+            size_t neighborId = AdjacencyDefT::GetNeighbor(dir, world, index);
+            if (neighborId != index)
+                constrainer.ApplyMask(neighborId, matrix.GetMask(dir, val.InternalIndex));
+        }
+    }
+
+    void operator()(const WorldT& world, size_t index, WorldValue<VarT> val, ConstrainerT& constrainer) const {
+        invoke(world, index, val, constrainer);
+    }
+
+    using FuncPtrType = void(*)(const WorldT&, size_t, WorldValue<VarT>, ConstrainerT&);
+    operator FuncPtrType() const { return &invoke; }
+};
+
 } // namespace WFC
