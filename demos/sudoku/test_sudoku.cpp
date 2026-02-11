@@ -313,24 +313,24 @@ void testPuzzleSolving(const std::string& difficulty, const std::string& filenam
 
 // Tests loading and solving puzzles from data files using the unified function
 TEST_F(SudokuTest, LoadAndSolveEasyPuzzles) {
-    testPuzzleSolving("Easy", "../data/Sudoku_easy.txt");
+    testPuzzleSolving("Easy", SUDOKU_DATA_DIR "/Sudoku_easy.txt");
 }
 
 TEST_F(SudokuTest, LoadAndSolveMediumPuzzles) {
-    testPuzzleSolving("Medium", "../data/Sudoku_medium.txt");
+    testPuzzleSolving("Medium", SUDOKU_DATA_DIR "/Sudoku_medium.txt");
 }
 
 TEST_F(SudokuTest, LoadAndSolveHardPuzzles) {
-    testPuzzleSolving("Hard", "../data/Sudoku_hard.txt");
+    testPuzzleSolving("Hard", SUDOKU_DATA_DIR "/Sudoku_hard.txt");
 }
 
 TEST_F(SudokuTest, LoadAndSolveDiabolicalPuzzles) {
-    testPuzzleSolving("Diabolical", "../data/Sudoku_diabolical.txt");
+    testPuzzleSolving("Diabolical", SUDOKU_DATA_DIR "/Sudoku_diabolical.txt");
 }
 
 // Test loading and solving the first puzzle from each difficulty file
 TEST_F(SudokuTest, LoadAndSolveFirstPuzzleFromEachFile) {
-    const std::string dataPath = "../data";
+    const std::string dataPath = SUDOKU_DATA_DIR;
     const std::vector<std::pair<std::string, std::string>> fileTests = {
         {"Sudoku_easy.txt", "Easy"},
         {"Sudoku_medium.txt", "Medium"},

@@ -124,6 +124,9 @@ if(HAS_GTEST)
     # Include directories for tests
     target_include_directories(sudoku_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+    # Provide the path to test data files
+    target_compile_definitions(sudoku_tests PRIVATE SUDOKU_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+
     # Add test to CTest
     add_test(NAME sudoku_tests COMMAND sudoku_tests)
 endif()
