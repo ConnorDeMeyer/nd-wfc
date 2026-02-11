@@ -72,7 +72,7 @@ using MergedConstrainerFunctionMap = decltype(
 /**
  * @brief Constrainer class used in constraint functions to limit possible values for other cells
  */
-template <typename WaveT, typename PropagationQueueT>
+template <typename WaveT, typename PropagationQueueT, typename UserDataT = std::tuple<>>
 class Constrainer {
 public:
     using IDMapT = typename WaveT::IDMapT;
@@ -80,10 +80,14 @@ public:
     using MaskType = typename BitContainerT::StorageType;
 
 public:
-    Constrainer(WaveT& wave, PropagationQueueT& propagationQueue)
+    Constrainer(WaveT& wave, PropagationQueueT& propagationQueue, const UserDataT& userData)
         : m_wave(wave)
         , m_propagationQueue(propagationQueue)
+        , m_userData(userData)
     {}
+
+    template <typename T>
+    const T& GetUserData() const { return std::get<T>(m_userData); }
 
     /**
         * @brief Constrain a cell to exclude specific values
@@ -149,6 +153,7 @@ private:
 private:
     WaveT& m_wave;
     PropagationQueueT& m_propagationQueue;
+    const UserDataT& m_userData;
 };
 
 }

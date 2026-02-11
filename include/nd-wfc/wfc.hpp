@@ -38,8 +38,8 @@ concept WorldType = requires(T world, typename T::ValueType value) {
     typename T::ValueType;
 };
 
-template <typename T, typename WorldT, typename VarT, typename VariableIDMapT, typename PropagationQueueType>
-concept ConstrainerFunction = requires(T func, const WorldT& world, size_t index, WorldValue<VarT> value, Constrainer<VariableIDMapT, PropagationQueueType>& constrainer) {
+template <typename T, typename WorldT, typename VarT, typename VariableIDMapT, typename PropagationQueueType, typename UserDataT = std::tuple<>>
+concept ConstrainerFunction = requires(T func, const WorldT& world, size_t index, WorldValue<VarT> value, Constrainer<VariableIDMapT, PropagationQueueType, UserDataT>& constrainer) {
     func(world, index, value, constrainer);
 };
 
@@ -161,7 +161,7 @@ bool Propagate(StateT& state, WaveT& wave)
     using WorldSizeT = typename StateT::WorldSizeT;
     using VariableIDT = typename WaveT::VariableIDT;
     using PropagationQueueType = typename StateT::PropagationQueueType;
-    using ConstrainerType = Constrainer<WaveT, PropagationQueueType>;
+    using ConstrainerType = Constrainer<WaveT, PropagationQueueType, typename StateT::UserDataType>;
 
     while (!state.m_propagationQueue.empty())
     {
@@ -172,7 +172,7 @@ bool Propagate(StateT& state, WaveT& wave)
         constexpr_assert(wave.IsCollapsed(cellId), "Cell was not collapsed");
 
         VariableIDT variableID = wave.GetVariableID(cellId);
-        ConstrainerType constrainer(wave, state.m_propagationQueue);
+        ConstrainerType constrainer(wave, state.m_propagationQueue, state.m_userData);
 
         using WorldT = typename StateT::WorldType;
         using ConstrainerFunctionPtrT = void(*)(const WorldT&, size_t, WorldValue<VarT>, ConstrainerType&);
@@ -308,8 +308,8 @@ bool Run(typename ConfigT::SolverStateType& state)
 
     if constexpr (ConfigT::HasInitialState())
     {
-        using ConstrainerType = Constrainer<WaveType, typename ConfigT::SolverStateType::PropagationQueueType>;
-        ConstrainerType constrainer(wave, state.m_propagationQueue);
+        using ConstrainerType = Constrainer<WaveType, typename ConfigT::SolverStateType::PropagationQueueType, typename ConfigT::UserDataType>;
+        ConstrainerType constrainer(wave, state.m_propagationQueue, state.m_userData);
         typename ConfigT::InitialStateFunctionType{}(state.m_world, constrainer, state.m_randomSelector);
     }
 

@@ -82,7 +82,7 @@ public:
 
     using WaveType = Wave<VariableIDMapT, WorldSize>;
     using PropagationQueueType = WFCQueue<WorldSize, WorldSizeT>;
-    using ConstrainerType = Constrainer<WaveType, PropagationQueueType>;
+    using ConstrainerType = Constrainer<WaveType, PropagationQueueType, UserDataT>;
 
 
     // === Core: Define variable IDs ===
@@ -120,7 +120,7 @@ public:
     using EmptyConstrainerFunctionT = EmptyConstrainerFunction<WorldT, WorldSizeT, VarT, ConstrainerType>;
 
     template <typename ConstrainerFunctionT>
-        requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType>
+        requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType, UserDataT>
     using Constrain = BuilderImpl<
         CoreTypes<WorldT, VarT, VariableIDMapT,
             MergedConstrainerFunctionMap<
@@ -134,7 +134,7 @@ public:
         SelectedValueT>;
 
     template <typename ConstrainerFunctionT>
-        requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType>
+        requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType, UserDataT>
     using ConstrainAll = BuilderImpl<
         CoreTypes<WorldT, VarT, VariableIDMapT,
             MergedConstrainerFunctionMap<
