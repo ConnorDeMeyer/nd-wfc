@@ -5,13 +5,13 @@
 
 namespace WFC {
 
-template <typename WorldT, typename WorldSizeT, typename VarT, typename ConstainerType>
+template <typename WorldT, typename WorldSizeT, typename VarT, typename ConstrainerType>
 struct EmptyConstrainerFunction
 {
-    static void invoke(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) {}
-    void operator()(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) const {}
+    static void invoke(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstrainerType&) {}
+    void operator()(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstrainerType&) const {}
 
-    using FuncPtrType = void(*)(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&);
+    using FuncPtrType = void(*)(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstrainerType&);
     operator FuncPtrType() const { return &invoke; }
 };
 
@@ -23,13 +23,18 @@ public:
     using TupleType = std::tuple<ConstrainerFunctions...>;
 
     template <typename ConstrainerFunctionPtrT>
-    static ConstrainerFunctionPtrT GetFunction(size_t index)
+    static ConstrainerFunctionPtrT GetFunction([[maybe_unused]] size_t index)
     {
         static_assert((std::is_empty_v<ConstrainerFunctions> && ...), "Lambdas must not have any captures");
-        static ConstrainerFunctionPtrT functions[] = {
-            static_cast<ConstrainerFunctionPtrT>(ConstrainerFunctions{}) ...
-        };
-        return functions[index];
+        using First = std::tuple_element_t<0, TupleType>;
+        if constexpr ((std::is_same_v<First, ConstrainerFunctions> && ...)) {
+            return static_cast<ConstrainerFunctionPtrT>(First{});
+        } else {
+            static ConstrainerFunctionPtrT functions[] = {
+                static_cast<ConstrainerFunctionPtrT>(ConstrainerFunctions{}) ...
+            };
+            return functions[index];
+        }
     }
 };
 
