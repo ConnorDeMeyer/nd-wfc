@@ -8,10 +8,10 @@ namespace WFC {
 template <typename WorldT, typename WorldSizeT, typename VarT, typename ConstainerType>
 struct EmptyConstrainerFunction
 {
-    static void invoke(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) {}
-    void operator()(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) const {}
+    static void invoke(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) {}
+    void operator()(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&) const {}
 
-    using FuncPtrType = void(*)(WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&);
+    using FuncPtrType = void(*)(const WorldT&, WorldSizeT, WorldValue<VarT>, ConstainerType&);
     operator FuncPtrType() const { return &invoke; }
 };
 

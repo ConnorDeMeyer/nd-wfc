@@ -39,7 +39,7 @@ concept WorldType = requires(T world, typename T::ValueType value) {
 };
 
 template <typename T, typename WorldT, typename VarT, typename VariableIDMapT, typename PropagationQueueType>
-concept ConstrainerFunction = requires(T func, WorldT& world, size_t index, WorldValue<VarT> value, Constrainer<VariableIDMapT, PropagationQueueType>& constrainer) {
+concept ConstrainerFunction = requires(T func, const WorldT& world, size_t index, WorldValue<VarT> value, Constrainer<VariableIDMapT, PropagationQueueType>& constrainer) {
     func(world, index, value, constrainer);
 };
 
@@ -175,7 +175,7 @@ bool Propagate(StateT& state, WaveT& wave)
         ConstrainerType constrainer(wave, state.m_propagationQueue);
 
         using WorldT = typename StateT::WorldType;
-        using ConstrainerFunctionPtrT = void(*)(WorldT&, size_t, WorldValue<VarT>, ConstrainerType&);
+        using ConstrainerFunctionPtrT = void(*)(const WorldT&, size_t, WorldValue<VarT>, ConstrainerType&);
 
         ConstrainerFunctionMapT::template GetFunction<ConstrainerFunctionPtrT>(variableID)(state.m_world, cellId, WorldValue<VarT>{VariableIDMapT::GetValue(variableID), variableID}, constrainer);
     }

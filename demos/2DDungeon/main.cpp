@@ -57,14 +57,14 @@ int main() {
     using DungeonBuilder = WFC::Builder<World>
         ::DefineIDs<U'╣',U'╬'>
         ::Variable<U'╣'>
-        ::Constrain<decltype([](World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
+        ::Constrain<decltype([](const World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
             auto [x, y] = world.getCoord(index);
             
             // Down: must connect up → exclude tiles without up
             constrainer.template Exclude<U'╬'>(world.getCoordOffset(x, y, 0, 1));
         })>
         ::Variable<U'╬'>
-        ::Constrain<decltype([](World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
+        ::Constrain<decltype([](const World& world, size_t index, WFC::WorldValue<char32_t> val, auto& constrainer) constexpr {
             auto [x, y] = world.getCoord(index);
             
             // Up: must connect down → exclude tiles without down

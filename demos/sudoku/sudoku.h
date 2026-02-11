@@ -318,7 +318,7 @@ private:
 
 using SudokuSolverBuilder = WFC::Builder<Sudoku>
     ::DefineRange<1, 10>
-    ::ConstrainAll<decltype([](Sudoku&, size_t index, WFC::WorldValue<uint8_t> val, auto& constrainer) constexpr {
+    ::ConstrainAll<decltype([](const Sudoku&, size_t index, WFC::WorldValue<uint8_t> val, auto& constrainer) constexpr {
         size_t x = index % 9;
         size_t y = index / 9;
         
