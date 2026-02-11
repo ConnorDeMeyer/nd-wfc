@@ -29,8 +29,9 @@ std::vector<Sudoku> loadPuzzlesFromFile(const std::string& filename) {
     return puzzles;
 }
 
-using SudokuSolverCallback = SudokuSolverBuilder::SetCellCollapsedCallback<decltype([](Sudoku& sudoku) 
+using SudokuSolverCallback = SudokuSolverBuilder::SetCellCollapsedCallback<decltype([](const auto& state)
     {
+        const auto& sudoku = state.m_world;
         static Sudoku LastSudoku{};
         static int counter = 0;
         for (size_t y = 0; y < 9; ++y) {

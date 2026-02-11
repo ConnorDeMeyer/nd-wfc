@@ -13,6 +13,7 @@
 #include <bit>
 #include <span>
 #include <tuple>
+#include <utility>
 
 #include "wfc_utils.hpp"
 #include "wfc_variable_map.hpp"
@@ -62,6 +63,12 @@ struct SolverState {
     WFCStackAllocator m_allocator{};
     size_t m_iterations{};
     UserDataT m_userData{};
+
+    template <typename T>
+    T& GetUserData() { return std::get<T>(m_userData); }
+
+    template <typename T>
+    const T& GetUserData() const { return std::get<T>(m_userData); }
 
     SolverState(WorldT& world, uint32_t seed)
         : m_world(world)
@@ -122,7 +129,7 @@ void CollapseCell(StateT& state, WaveT& wave, typename StateT::WorldSizeT cellId
     if constexpr (CallbacksT::HasCellCollapsedCallback())
     {
         PopulateWorld(state, wave);
-        typename CallbacksT::CellCollapsedCallback{}(state.m_world);
+        typename CallbacksT::CellCollapsedCallback{}(std::as_const(state));
     }
 }
 
@@ -267,7 +274,7 @@ bool RunLoop(StateT& state, WaveT& wave)
             if constexpr (CallbacksT::HasContradictionCallback())
             {
                 detail::PopulateWorld(state, wave);
-                typename CallbacksT::ContradictionCallback{}(state.m_world);
+                typename CallbacksT::ContradictionCallback{}(std::as_const(state));
             }
             return false;
         }
@@ -278,7 +285,7 @@ bool RunLoop(StateT& state, WaveT& wave)
         if constexpr (CallbacksT::HasBranchCallback())
         {
             detail::PopulateWorld(state, wave);
-            typename CallbacksT::BranchCallback{}(state.m_world);
+            typename CallbacksT::BranchCallback{}(std::as_const(state));
         }
 
         if (Branch<CallbacksT, ConstrainerFunctionMapT>(state, wave))

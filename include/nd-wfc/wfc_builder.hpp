@@ -208,7 +208,7 @@ public:
 template <typename WorldT>
 using Builder = BuilderImpl<
     CoreTypes<WorldT, typename WorldT::ValueType, VariableIDMap<typename WorldT::ValueType>, ConstrainerFunctionMap<void*>>,
-    OptionTypes<Callbacks<WorldT>, DefaultRandomSelector<typename WorldT::ValueType>, EmptyInitialState>
+    OptionTypes<Callbacks<>, DefaultRandomSelector<typename WorldT::ValueType>, EmptyInitialState>
 >;
 
 }
