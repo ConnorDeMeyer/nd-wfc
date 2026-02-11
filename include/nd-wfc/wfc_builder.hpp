@@ -9,20 +9,74 @@ namespace WFC {
 #include "wfc_random.hpp"
 #include "wfc.hpp"
 
+namespace detail {
+
+template<typename T, typename Tuple>
+struct TupleContains : std::false_type {};
+
+template<typename T, typename U, typename... Rest>
+struct TupleContains<T, std::tuple<U, Rest...>> : TupleContains<T, std::tuple<Rest...>> {};
+
+template<typename T, typename... Rest>
+struct TupleContains<T, std::tuple<T, Rest...>> : std::true_type {};
+
+template<typename T, typename Tuple>
+struct TupleAppendUnique;
+
+template<typename T, typename... Ts>
+struct TupleAppendUnique<T, std::tuple<Ts...>> {
+    static_assert(!TupleContains<T, std::tuple<Ts...>>::value, "AddUserData: type already exists in UserData tuple (all types must be unique)");
+    using type = std::tuple<Ts..., T>;
+};
+
+} // namespace detail
+
+/**
+* @brief Groups core WFC types: World, VarT, VariableIDMap, ConstrainerFunctionMap
+*/
+template<typename WorldT_, typename VarT_, typename VariableIDMapT_, typename ConstrainerFunctionMapT_>
+struct CoreTypes {
+    using WorldT = WorldT_;
+    using VarT = VarT_;
+    using VariableIDMapT = VariableIDMapT_;
+    using ConstrainerFunctionMapT = ConstrainerFunctionMapT_;
+};
+
+/**
+* @brief Groups optional WFC types: Callbacks, RandomSelector, InitialStateFunction, UserData
+*/
+template<typename CallbacksT_, typename RandomSelectorT_, typename InitialStateFunctionT_, typename UserDataT_ = std::tuple<>>
+struct OptionTypes {
+    using CallbacksT = CallbacksT_;
+    using RandomSelectorT = RandomSelectorT_;
+    using InitialStateFunctionT = InitialStateFunctionT_;
+    using UserDataT = UserDataT_;
+};
+
 /**
 * @brief Builder class for creating WFC instances
+*
+* Template parameters are organized into sub-builders:
+*   CoreT:          WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT
+*   OptionsT:       CallbacksT, RandomSelectorT, InitialStateFunctionT, UserDataT
+*   SelectedValueT: always last, tracks the currently selected variable for Constrain
 */
-template<
-    typename WorldT,
-    typename VarT = typename WorldT::ValueType,
-    typename VariableIDMapT = VariableIDMap<VarT>,
-    typename ConstrainerFunctionMapT = ConstrainerFunctionMap<void*>,
-    typename CallbacksT = Callbacks<WorldT>,
-    typename RandomSelectorT = DefaultRandomSelector<VarT>,
-    typename SelectedValueT = void,
-    typename InitialStateFunctionT = EmptyInitialState>
-class Builder {
+template<typename CoreT, typename OptionsT, typename SelectedValueT = void>
+class BuilderImpl {
 public:
+    // --- Extracted core types ---
+    using WorldT = typename CoreT::WorldT;
+    using VarT = typename CoreT::VarT;
+    using VariableIDMapT = typename CoreT::VariableIDMapT;
+    using ConstrainerFunctionMapT = typename CoreT::ConstrainerFunctionMapT;
+
+    // --- Extracted option types ---
+    using CallbacksT = typename OptionsT::CallbacksT;
+    using RandomSelectorT = typename OptionsT::RandomSelectorT;
+    using InitialStateFunctionT = typename OptionsT::InitialStateFunctionT;
+    using UserDataT = typename OptionsT::UserDataT;
+
+    // --- Derived types ---
     using WorldSizeT = decltype(WorldT{}.size());
     constexpr static WorldSizeT WorldSize = HasConstexprSize<WorldT> ? WorldT{}.size() : 0;
 
@@ -31,65 +85,130 @@ public:
     using ConstrainerType = Constrainer<WaveType, PropagationQueueType>;
 
 
+    // === Core: Define variable IDs ===
+
     template <VarT ... Values>
-    using DefineIDs = Builder<WorldT, VarT, VariableIDMap<VarT, Values...>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>, InitialStateFunctionT>;
+    using DefineIDs = BuilderImpl<
+        CoreTypes<WorldT, VarT, VariableIDMap<VarT, Values...>, ConstrainerFunctionMapT>,
+        OptionsT,
+        VariableIDMap<VarT, Values...>>;
 
     template <size_t RangeStart, size_t RangeEnd>
-    using DefineRange = Builder<WorldT, VarT, VariableIDRange<VarT, RangeStart, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>, InitialStateFunctionT>;
+    using DefineRange = BuilderImpl<
+        CoreTypes<WorldT, VarT, VariableIDRange<VarT, RangeStart, RangeEnd>, ConstrainerFunctionMapT>,
+        OptionsT,
+        VariableIDRange<VarT, RangeStart, RangeEnd>>;
 
     template <size_t RangeEnd>
-    using DefineRange0 = Builder<WorldT, VarT, VariableIDRange<VarT, 0, RangeEnd>, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, 0, RangeEnd>, InitialStateFunctionT>;
+    using DefineRange0 = BuilderImpl<
+        CoreTypes<WorldT, VarT, VariableIDRange<VarT, 0, RangeEnd>, ConstrainerFunctionMapT>,
+        OptionsT,
+        VariableIDRange<VarT, 0, RangeEnd>>;
 
+
+    // === Core: Select variables for constraints ===
 
     template <VarT ... Values>
-    using Variable = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDMap<VarT, Values...>, InitialStateFunctionT>;
+    using Variable = BuilderImpl<CoreT, OptionsT, VariableIDMap<VarT, Values...>>;
 
     template <size_t RangeStart, size_t RangeEnd>
-    using VariableRange = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, VariableIDRange<VarT, RangeStart, RangeEnd>, InitialStateFunctionT>;
+    using VariableRange = BuilderImpl<CoreT, OptionsT, VariableIDRange<VarT, RangeStart, RangeEnd>>;
 
+
+    // === Core: Add constraints ===
 
     using EmptyConstrainerFunctionT = EmptyConstrainerFunction<WorldT, WorldSizeT, VarT, ConstrainerType>;
 
     template <typename ConstrainerFunctionT>
         requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType>
-    using Constrain = Builder<WorldT, VarT, VariableIDMapT,
-        MergedConstrainerFunctionMap<
-            VariableIDMapT,
-            ConstrainerFunctionMapT,
-            ConstrainerFunctionT,
-            SelectedValueT,
-            EmptyConstrainerFunctionT
-            >, CallbacksT, RandomSelectorT, SelectedValueT, InitialStateFunctionT
-        >;
+    using Constrain = BuilderImpl<
+        CoreTypes<WorldT, VarT, VariableIDMapT,
+            MergedConstrainerFunctionMap<
+                VariableIDMapT,
+                ConstrainerFunctionMapT,
+                ConstrainerFunctionT,
+                SelectedValueT,
+                EmptyConstrainerFunctionT
+            >>,
+        OptionsT,
+        SelectedValueT>;
 
     template <typename ConstrainerFunctionT>
-    requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType>
-    using ConstrainAll = Builder<WorldT, VarT, VariableIDMapT,
-        MergedConstrainerFunctionMap<
-            VariableIDMapT,
-            ConstrainerFunctionMapT,
-            ConstrainerFunctionT,
-            VariableIDMapT,
-            EmptyConstrainerFunctionT
-            >, CallbacksT, RandomSelectorT, SelectedValueT, InitialStateFunctionT
-        >;
+        requires ConstrainerFunction<ConstrainerFunctionT, WorldT, VarT, WaveType, PropagationQueueType>
+    using ConstrainAll = BuilderImpl<
+        CoreTypes<WorldT, VarT, VariableIDMapT,
+            MergedConstrainerFunctionMap<
+                VariableIDMapT,
+                ConstrainerFunctionMapT,
+                ConstrainerFunctionT,
+                VariableIDMapT,
+                EmptyConstrainerFunctionT
+            >>,
+        OptionsT,
+        SelectedValueT>;
 
+
+    // === Options: Callbacks ===
 
     template <typename NewCellCollapsedCallbackT>
-    using SetCellCollapsedCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetCellCollapsedCallbackT<NewCellCollapsedCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
-    template <typename NewContradictionCallbackT>
-    using SetContradictionCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetContradictionCallbackT<NewContradictionCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
-    template <typename NewBranchCallbackT>
-    using SetBranchCallback = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, typename CallbacksT::template SetBranchCallbackT<NewBranchCallbackT>, RandomSelectorT, SelectedValueT, InitialStateFunctionT>;
+    using SetCellCollapsedCallback = BuilderImpl<
+        CoreT,
+        OptionTypes<typename CallbacksT::template SetCellCollapsedCallbackT<NewCellCollapsedCallbackT>, RandomSelectorT, InitialStateFunctionT, UserDataT>,
+        SelectedValueT>;
 
+    template <typename NewContradictionCallbackT>
+    using SetContradictionCallback = BuilderImpl<
+        CoreT,
+        OptionTypes<typename CallbacksT::template SetContradictionCallbackT<NewContradictionCallbackT>, RandomSelectorT, InitialStateFunctionT, UserDataT>,
+        SelectedValueT>;
+
+    template <typename NewBranchCallbackT>
+    using SetBranchCallback = BuilderImpl<
+        CoreT,
+        OptionTypes<typename CallbacksT::template SetBranchCallbackT<NewBranchCallbackT>, RandomSelectorT, InitialStateFunctionT, UserDataT>,
+        SelectedValueT>;
+
+
+    // === Options: Random selector ===
 
     template <typename NewRandomSelectorT>
-    using SetRandomSelector = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, NewRandomSelectorT, SelectedValueT, InitialStateFunctionT>;
+    using SetRandomSelector = BuilderImpl<
+        CoreT,
+        OptionTypes<CallbacksT, NewRandomSelectorT, InitialStateFunctionT, UserDataT>,
+        SelectedValueT>;
+
+
+    // === Options: Initial state ===
 
     template <typename NewInitialStateFunctionT>
-    using SetInitialState = Builder<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, SelectedValueT, NewInitialStateFunctionT>;
+    using SetInitialState = BuilderImpl<
+        CoreT,
+        OptionTypes<CallbacksT, RandomSelectorT, NewInitialStateFunctionT, UserDataT>,
+        SelectedValueT>;
 
-    using Build = WFCConfig<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, InitialStateFunctionT>;
+
+    // === Options: User data ===
+
+    template <typename T>
+    using AddUserData = BuilderImpl<
+        CoreT,
+        OptionTypes<CallbacksT, RandomSelectorT, InitialStateFunctionT,
+            typename detail::TupleAppendUnique<T, UserDataT>::type>,
+        SelectedValueT>;
+
+
+    // === Build ===
+
+    using Build = WFCConfig<WorldT, VarT, VariableIDMapT, ConstrainerFunctionMapT, CallbacksT, RandomSelectorT, InitialStateFunctionT, UserDataT>;
 };
+
+/**
+* @brief Convenience alias - preserves the original Builder<WorldT> entry point
+*/
+template <typename WorldT>
+using Builder = BuilderImpl<
+    CoreTypes<WorldT, typename WorldT::ValueType, VariableIDMap<typename WorldT::ValueType>, ConstrainerFunctionMap<void*>>,
+    OptionTypes<Callbacks<WorldT>, DefaultRandomSelector<typename WorldT::ValueType>, EmptyInitialState>
+>;
 
 }

@@ -48,18 +48,20 @@ concept HasConstexprSize = requires {
 };
 
 // Standalone SolverState struct
-template <typename WorldT, typename RandomSelectorT = DefaultRandomSelector<typename WorldT::ValueType>>
+template <typename WorldT, typename RandomSelectorT = DefaultRandomSelector<typename WorldT::ValueType>, typename UserDataT = std::tuple<>>
 struct SolverState {
     using WorldType = WorldT;
     using WorldSizeT = decltype(WorldT{}.size());
     static constexpr WorldSizeT WorldSize = HasConstexprSize<WorldT> ? WorldT{}.size() : 0;
     using PropagationQueueType = WFCQueue<WorldSize, WorldSizeT>;
+    using UserDataType = UserDataT;
 
     WorldT& m_world;
     PropagationQueueType m_propagationQueue{};
     RandomSelectorT m_randomSelector{};
     WFCStackAllocator m_allocator{};
     size_t m_iterations{};
+    UserDataT m_userData{};
 
     SolverState(WorldT& world, uint32_t seed)
         : m_world(world)
@@ -73,17 +75,19 @@ struct SolverState {
 // Types-only config struct produced by Builder
 template <typename WorldT, typename VarT, typename VariableIDMapT,
           typename ConstrainerFunctionMapT, typename CallbacksT, typename RandomSelectorT,
-          typename InitialStateFunctionT = EmptyInitialState>
+          typename InitialStateFunctionT = EmptyInitialState,
+          typename UserDataT = std::tuple<>>
 struct WFCConfig {
     static_assert(WorldType<WorldT>, "WorldT must satisfy World type requirements");
 
     using WorldSizeT = decltype(WorldT{}.size());
     static constexpr WorldSizeT WorldSize = HasConstexprSize<WorldT> ? WorldT{}.size() : 0;
-    using SolverStateType = SolverState<WorldT, RandomSelectorT>;
+    using SolverStateType = SolverState<WorldT, RandomSelectorT, UserDataT>;
     using WaveType = Wave<VariableIDMapT, WorldSize>;
     using CallbacksType = CallbacksT;
     using ConstrainerFunctionMapType = ConstrainerFunctionMapT;
     using InitialStateFunctionType = InitialStateFunctionT;
+    using UserDataType = UserDataT;
     static consteval bool HasInitialState() { return !std::is_same_v<InitialStateFunctionT, EmptyInitialState>; }
 };
 
@@ -309,10 +313,11 @@ bool Run(typename ConfigT::SolverStateType& state)
     return false;
 }
 
-template <typename ConfigT, typename WorldT>
-bool Run(WorldT& world, uint32_t seed = std::random_device{}())
+template <typename ConfigT, typename WorldT, typename... UserDataArgs>
+bool Run(WorldT& world, uint32_t seed = std::random_device{}(), UserDataArgs&&... userData)
 {
     typename ConfigT::SolverStateType state{ world, seed };
+    ((std::get<std::decay_t<UserDataArgs>>(state.m_userData) = std::forward<UserDataArgs>(userData)), ...);
     return Run<ConfigT>(state);
 }
 
