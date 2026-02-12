@@ -6,28 +6,57 @@
 #include <string_view>
 
 // --- Pattern to learn from ---
-constexpr size_t PatternWidth = 23;
-constexpr size_t PatternHeight = 13;
+template <size_t N>
+constexpr size_t maxRowWidth(const std::u32string_view (&rows)[N]) {
+    size_t max = 0;
+    for (auto& r : rows)
+        if (r.size() > max) max = r.size();
+    return max;
+}
+
+constexpr std::u32string_view patternRows[] = {
+U"        ╔═╦═╗     ",
+U"        ║H│.╠══╦═╗",
+U"        ╚═╣.│..│T║",
+U"          ║.╚══╬═╝",
+U"  ╔═╗     ║...X║  ",
+U"  ║.║    ╔╩╦═─╦╝  ",
+U" ╔╩─╩╗   ║S│..║   ",
+U" ║...╠═╦═╩─╩╦─╩═╗ ",
+U"╔╝...║T│....│...║ ",
+U"║..╔─╩╦╩═╦─═╩─═╦╝ ",
+U"╚══╣..│..║....X║  ",
+U"   ║X.║..│.....╠═╗",
+U"   ╚╦─╬══╬══╗..│T║",
+U"    ║W║  ║..│..╠═╝",
+U"    ╚═╝  ║X.║..║  ",
+U"         ╚══╬─╦╝  ",
+U"            ║E║   ",
+U"            ╚═╝   ",
+};
+
+constexpr size_t PatternWidth = maxRowWidth(patternRows);
+constexpr size_t PatternHeight = std::size(patternRows);
 
 using PatternWorld = WFC::Array2D<char32_t, PatternWidth, PatternHeight>;
 
 // All unique tile types in the pattern
 using IDMap = WFC::VariableIDMap<char32_t,
-    U' ', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬'>;
+    U' ', U'.', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬', U'─', U'│', 'H', 'T', 'X', 'S', 'E', 'W'>;
 
 using Adj = WFC::Array2DAdjacency<PatternWorld>;
 using Matrix = WFC::AdjacencyMatrix<IDMap, Adj>;
 
 // --- Output dungeon ---
-constexpr size_t DungeonWidth = 30;
-constexpr size_t DungeonHeight = 20;
+constexpr size_t DungeonWidth = 16;
+constexpr size_t DungeonHeight = 16;
 
 using DungeonWorld = WFC::Array2D<char32_t, DungeonWidth, DungeonHeight>;
 using DungeonAdj = WFC::Array2DAdjacency<DungeonWorld>;
 using DungeonMatrix = WFC::AdjacencyMatrix<IDMap, DungeonAdj>;
 
 using DungeonBuilder = WFC::Builder<DungeonWorld>
-    ::DefineIDs<U' ', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬'>
+    ::DefineIDs<U' ', U'.', U'║', U'═', U'╔', U'╗', U'╚', U'╝', U'╠', U'╣', U'╦', U'╩', U'╬', U'─', U'│', 'H', 'T', 'X', 'S', 'E', 'W'>
     ::SetAdjacencyMatrix<DungeonMatrix, DungeonAdj>
     ::Build;
 
@@ -66,26 +95,10 @@ int main() {
     std::cout << "2D Dungeon WFC Demo (Adjacency Matrix)\n\n";
 
     // --- Step 1: Load the example pattern ---
-    const std::u32string_view rows[] = {
-        U"╔══════════╦══════════╗",
-        U"║          ║          ║",
-        U"║   ╔════╗ ║   ╔════╗ ║",
-        U"║   ║    ║ ║   ║    ║ ║",
-        U"╠═══╝    ╚═╬═══╝    ╚═╣",
-        U"║          ║         ╔╝",
-        U"║   ╔══╦═══╝   ╔══╦══╣",
-        U"║   ║  ║       ║  ║  ║",
-        U"╠═══╝  ╚═══════╝  ╚══╣",
-        U"║                    ║",
-        U"║   ╔════════════╗   ║",
-        U"║   ║            ║   ║",
-        U"╚═══╩════════════╩═══╝",
-    };
-
     PatternWorld pattern{};
     for (size_t y = 0; y < PatternHeight; ++y)
         for (size_t x = 0; x < PatternWidth; ++x)
-            pattern.setValue(y * PatternWidth + x, x < rows[y].size() ? rows[y][x] : U' ');
+            pattern.setValue(y * PatternWidth + x, x < patternRows[y].size() ? patternRows[y][x] : U' ');
 
     std::cout << "Input pattern (" << PatternWidth << "x" << PatternHeight << "):\n";
     printWorld(pattern);

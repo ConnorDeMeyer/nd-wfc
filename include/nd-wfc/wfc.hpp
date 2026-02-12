@@ -263,7 +263,7 @@ bool Branch(StateT& state, WaveT& wave)
 template <typename CallbacksT, typename ConstrainerFunctionMapT, typename StateT, typename WaveT>
 bool RunLoop(StateT& state, WaveT& wave)
 {
-    static constexpr size_t MaxIterations = 1024 * 8;
+    static constexpr size_t MaxIterations = 1024 * 16;
     for (; state.m_iterations < MaxIterations; ++state.m_iterations)
     {
         if (!detail::Propagate<ConstrainerFunctionMapT>(state, wave))
